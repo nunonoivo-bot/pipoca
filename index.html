@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipoca — Filmes e séries hoje em Portugal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">🍿</span>
+                    <h1>Pipoca</h1>
+                </div>
+                <p class="tagline">Filmes e séries hoje em Portugal</p>
+                <div class="date-display" id="date-display"></div>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="tv">📺 TV</button>
+                <button class="tab-btn" data-tab="streaming">🎬 Streaming</button>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="search" placeholder="Pesquisar filme, série, canal, plataforma..." />
+            </div>
+            <div id="tv-filters" class="filter-group">
+                <div class="filter-row" data-group="time">
+                    <button class="filter-btn active" data-filter="all-time">Tudo</button>
+                    <button class="filter-btn" data-filter="now">A dar agora</button>
+                    <button class="filter-btn" data-filter="tonight">Esta noite</button>
+                </div>
+                <div class="filter-row" data-group="type">
+                    <button class="filter-btn active" data-filter="all-type">Todos</button>
+                    <button class="filter-btn" data-filter="movies">Filmes</button>
+                    <button class="filter-btn" data-filter="series">Séries</button>
+                </div>
+                <div class="filter-row" data-group="sort">
+                    <button class="filter-btn active" data-filter="sort-time">⏰ Horário</button>
+                    <button class="filter-btn" data-filter="sort-rating">★ Rating</button>
+                </div>
+            </div>
+            <div id="stream-filters" class="filter-group hidden">
+                <div class="filter-row" data-group="type">
+                    <button class="filter-btn active" data-filter="all-type">Todos</button>
+                    <button class="filter-btn" data-filter="movies">Filmes</button>
+                    <button class="filter-btn" data-filter="series">Séries</button>
+                </div>
+                <div class="filter-row" data-group="platform">
+                    <button class="filter-btn active" data-filter="all-platform">Todas</button>
+                    <button class="filter-btn" data-filter="Netflix">Netflix</button>
+                    <button class="filter-btn" data-filter="Disney+">Disney+</button>
+                    <button class="filter-btn" data-filter="Max">Max</button>
+                    <button class="filter-btn" data-filter="Prime Video">Prime Video</button>
+                    <button class="filter-btn" data-filter="Apple TV+">Apple TV+</button>
+                    <button class="filter-btn" data-filter="SkyShowtime">SkyShowtime</button>
+                </div>
+                <div class="filter-row" data-group="sort">
+                    <button class="filter-btn active" data-filter="sort-rating">★ Rating</button>
+                    <button class="filter-btn" data-filter="sort-alpha">A-Z</button>
+                </div>
+            </div>
+        </header>
+
+        <main id="content" class="content">
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>A procurar o que há de bom hoje...</p>
+                <p class="loading-sub">TV + Streaming (pode demorar uns segundos)</p>
+            </div>
+            <div id="stats" class="stats hidden"></div>
+            <div id="grid" class="grid"></div>
+            <div id="empty" class="empty hidden">
+                <p>Nenhum resultado encontrado.</p>
+            </div>
+        </main>
+
+        <div id="modal" class="modal hidden">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content">
+                <button class="modal-close">&times;</button>
+                <div id="modal-body"></div>
+            </div>
+        </div>
+
+        <footer>
+            <p>TV via MEO · Streaming via JustWatch · Pipoca 2026</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

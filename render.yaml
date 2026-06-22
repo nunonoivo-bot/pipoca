@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: pipoca
+    runtime: python
+    buildCommand: ""
+    startCommand: python3 server.py
+    envVars:
+      - key: OMDB_KEY
+        value: 9d8ae30a
