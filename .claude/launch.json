@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pipoca",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8090", "-d", "/Users/nunonoivo/Documents/Using Claude Code/PROJECTS/pipoca"],
+      "port": 8090
+    }
+  ]
+}

@@ -6,6 +6,9 @@ import re
 import urllib.request
 import urllib.parse
 from datetime import date
+import time
+import threading
+import gzip
 
 PORT = int(os.environ.get('PORT', 8090))
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -362,11 +365,22 @@ def build_streaming():
     return results
 
 
-# ---- Combined API ----
+# ---- Combined API (with 30-min cache) ----
+
+CACHE_TTL = 1800
+_api_cache = {}
+_cache_lock = threading.Lock()
+
 
 def build_all(target_date=None):
     if target_date is None:
         target_date = date.today().isoformat()
+
+    with _cache_lock:
+        cached = _api_cache.get(target_date)
+        if cached and time.time() - cached['ts'] < CACHE_TTL:
+            print(f'  Cache hit for {target_date}')
+            return cached['data']
 
     print(f'  Fetching TV schedule for {target_date}...')
     tv_programs = build_tv_schedule(target_date)
@@ -376,7 +390,7 @@ def build_all(target_date=None):
     streaming = build_streaming()
     print(f'  Streaming: {len(streaming)} titles')
 
-    return {
+    data = {
         'date': target_date,
         'tv': {
             'count': len(tv_programs),
@@ -387,6 +401,11 @@ def build_all(target_date=None):
             'titles': streaming,
         },
     }
+
+    with _cache_lock:
+        _api_cache[target_date] = {'data': data, 'ts': time.time()}
+
+    return data
 
 
 # ---- HTTP Server ----
@@ -409,13 +428,30 @@ class PipocaHandler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def send_json(self, data, status=200):
-        body = json.dumps(data, ensure_ascii=False).encode('utf-8')
+        raw = json.dumps(data, ensure_ascii=False).encode('utf-8')
+        accept_enc = self.headers.get('Accept-Encoding', '')
+        if 'gzip' in accept_enc:
+            body = gzip.compress(raw)
+            encoding = 'gzip'
+        else:
+            body = raw
+            encoding = None
         self.send_response(status)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', len(body))
+        if encoding:
+            self.send_header('Content-Encoding', encoding)
+        self.send_header('Cache-Control', 'public, max-age=300')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(body)
+
+    def end_headers(self):
+        if self.path and not self.path.startswith('/api/'):
+            ext = self.path.split('?')[0].rsplit('.', 1)[-1]
+            if ext in ('css', 'js', 'png', 'jpg', 'webp', 'ico', 'woff2'):
+                self.send_header('Cache-Control', 'public, max-age=3600')
+        super().end_headers()
 
     def log_message(self, fmt, *args):
         if '/api/' in (args[0] if args else ''):
