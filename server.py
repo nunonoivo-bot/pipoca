@@ -528,8 +528,11 @@ class PipocaHandler(http.server.SimpleHTTPRequestHandler):
 
     def send_json(self, data, status=200):
         raw = json.dumps(data, ensure_ascii=False).encode('utf-8')
-        accept_enc = self.headers.get('Accept-Encoding', '')
-        if 'gzip' in accept_enc:
+        try:
+            accept_enc = self.headers.get('Accept-Encoding', '') or ''
+        except Exception:
+            accept_enc = ''
+        if isinstance(accept_enc, str) and 'gzip' in accept_enc:
             body = gzip.compress(raw)
             encoding = 'gzip'
         else:
