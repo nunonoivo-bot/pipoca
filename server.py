@@ -260,26 +260,38 @@ def parse_nuxt(html):
     if len(arr) < 5 or not isinstance(arr[4], dict):
         return {}
 
-    def resolve(val, depth=0):
-        if depth > 4:
-            return val
-        if isinstance(val, int) and 0 <= val < len(arr):
-            return resolve(arr[val], depth + 1)
-        return val
+    def ref(idx):
+        if isinstance(idx, int) and 0 <= idx < len(arr):
+            return arr[idx]
+        return idx
 
-    def deep_resolve(val, depth=0):
-        if depth > 3:
-            return val
-        val = resolve(val)
-        if isinstance(val, dict):
-            return {k: deep_resolve(v, depth + 1) for k, v in val.items()}
-        if isinstance(val, list):
-            return [deep_resolve(v, depth + 1) for v in val]
-        return val
+    def resolve_flat(d):
+        if not isinstance(d, dict):
+            return {}
+        return {k: ref(v) if isinstance(v, int) else v for k, v in d.items()}
 
     apollo = arr[4]
-    return {k: deep_resolve(v) for k, v in apollo.items()
-            if isinstance(k, str) and (k.startswith('Show:') or k.startswith('Movie:'))}
+    items = {}
+    for k, idx in apollo.items():
+        if not isinstance(k, str):
+            continue
+        if not (k.startswith('Show:') or k.startswith('Movie:')):
+            continue
+        raw_show = ref(idx) if isinstance(idx, int) else idx
+        show = resolve_flat(raw_show)
+        content_key = 'content({"country":"PT","language":"pt"})'
+        content_raw = show.get(content_key, {})
+        if isinstance(content_raw, int):
+            content_raw = ref(content_raw)
+        content = resolve_flat(content_raw)
+        scoring_raw = content.get('scoring', {})
+        if isinstance(scoring_raw, int):
+            scoring_raw = ref(scoring_raw)
+        scoring = resolve_flat(scoring_raw)
+        show[content_key] = content
+        content['scoring'] = scoring
+        items[k] = show
+    return items
 
 
 def extract_jw_titles(dc, platform=''):
