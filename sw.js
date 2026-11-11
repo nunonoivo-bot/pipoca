@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pipoca-v3';
+const CACHE_NAME = 'pipoca-v4';
 const STATIC_ASSETS = ['/', '/index.html', '/style.css', '/app.js', '/manifest.json'];
 
 self.addEventListener('install', (e) => {
