@@ -288,6 +288,46 @@ header {
 .card-overlay .card-platforms { font-size: 9px; }
 .card-overlay .card-tomato { margin-top: 2px; font-size: 9px; }
 
+/* User badges on cards */
+.card-user-badge {
+    position: absolute; bottom: 8px; left: 8px; z-index: 2;
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.card-user-badge.watchlist {
+    background: rgba(255,107,53,0.25); color: var(--accent);
+    border: 1px solid rgba(255,107,53,0.4);
+}
+.card-user-badge.watched {
+    background: rgba(52,211,153,0.25); color: var(--rating-green);
+    border: 1px solid rgba(52,211,153,0.4);
+}
+.card-overlay ~ .card-user-badge,
+.card-overlay + .card-user-badge { bottom: auto; top: auto; }
+.card-image-wrap .card-user-badge { z-index: 3; }
+
+/* Modal action buttons */
+.modal-actions {
+    display: flex; gap: 10px; margin-top: 16px;
+}
+.action-btn {
+    flex: 1; padding: 12px 16px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); background: var(--bg-card);
+    color: var(--text-muted); font-family: inherit; font-size: 14px;
+    font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+}
+.action-btn:hover { border-color: var(--accent); color: var(--text); }
+.action-btn.active[data-action="watchlist"] {
+    background: rgba(255,107,53,0.12); border-color: var(--accent);
+    color: var(--accent);
+}
+.action-btn.active[data-action="watched"] {
+    background: rgba(52,211,153,0.12); border-color: var(--rating-green);
+    color: var(--rating-green);
+}
+
 /* Empty */
 .empty { text-align: center; padding: 100px 0; color: var(--text-muted); font-size: 14px; }
 .empty.hidden { display: none; }

@@ -9,6 +9,27 @@ let sortMode = 'sort-time';
 let platformFilter = 'all-platform';
 let currentSearch = '';
 
+function loadUserData() {
+    try { return JSON.parse(localStorage.getItem('pipoca_userdata') || '{}'); } catch { return {}; }
+}
+function saveUserData(data) {
+    try { localStorage.setItem('pipoca_userdata', JSON.stringify(data)); } catch {}
+}
+function itemKey(item) { return `${item.source || item.category}:${item.title}`; }
+function getUserStatus(item) { return loadUserData()[itemKey(item)] || null; }
+function setUserStatus(item, status) {
+    const data = loadUserData();
+    const key = itemKey(item);
+    if (status && data[key] !== status) data[key] = status;
+    else if (!status || data[key] === status) delete data[key];
+    else data[key] = status;
+    saveUserData(data);
+}
+function toggleStatus(item, status) {
+    const current = getUserStatus(item);
+    setUserStatus(item, current === status ? null : status);
+}
+
 function formatDate(dateStr) {
     return new Date(dateStr).toLocaleDateString('pt-PT', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -65,6 +86,10 @@ function renderTV(items) {
         const imdb = item.imdb ? `★ ${item.imdb.toFixed(1)}` : '';
         const rc = item.imdb ? ratingClass(item.imdb) : '';
 
+        const us = getUserStatus(item);
+        const usBadge = us === 'watchlist' ? '<div class="card-user-badge watchlist">♡</div>'
+            : us === 'watched' ? '<div class="card-user-badge watched">✓</div>' : '';
+
         return `
             <div class="card ${now ? 'now-playing' : ''}" data-idx="${i}" data-src="tv">
                 <div class="card-image-wrap">
@@ -74,6 +99,7 @@ function renderTV(items) {
                     ${imdb ? `<div class="card-rating ${rc}" ${now ? 'style="top:32px"' : ''}>${imdb}</div>` : ''}
                     <div class="card-type ${item.category}">${cat}</div>
                     <div class="card-time-badge">${time}</div>
+                    ${usBadge}
                 </div>
                 <div class="card-info">
                     <div class="card-title">${escapeHtml(item.title)}</div>
@@ -105,6 +131,10 @@ function renderStreaming(items) {
         const rc = item.imdb ? ratingClass(item.imdb) : '';
         const plats = (item.platforms || []).join(' · ');
 
+        const us = getUserStatus(item);
+        const usBadge = us === 'watchlist' ? '<div class="card-user-badge watchlist">♡</div>'
+            : us === 'watched' ? '<div class="card-user-badge watched">✓</div>' : '';
+
         return `
             <div class="card" data-idx="${i}" data-src="streaming">
                 <div class="card-image-wrap poster-ratio">
@@ -112,6 +142,7 @@ function renderStreaming(items) {
                          onerror="this.parentElement.innerHTML='<div class=card-no-poster>🎬</div>'">
                     ${imdb ? `<div class="card-rating ${rc}">${imdb}</div>` : ''}
                     <div class="card-type ${item.category}">${cat}</div>
+                    ${usBadge}
                     <div class="card-overlay">
                         <div class="card-title">${escapeHtml(item.title)}</div>
                         <div class="card-meta">
@@ -160,7 +191,9 @@ function openTVModal(item) {
             ${imdb ? `<div class="modal-rating-row"><div class="modal-rating-big ${rc}">${imdb}</div></div>` : ''}
             ${ep ? `<div class="modal-episode">${ep}</div>` : ''}
             ${item.synopsis ? `<p class="modal-overview">${escapeHtml(item.synopsis)}</p>` : ''}
+            ${renderUserActions(item)}
         </div>`;
+    bindUserActions(item);
 }
 
 function openStreamModal(item) {
@@ -190,7 +223,34 @@ function openStreamModal(item) {
             </div>
             ${plats ? `<div class="modal-platforms">${plats}</div>` : ''}
             ${item.synopsis ? `<p class="modal-overview">${escapeHtml(item.synopsis)}</p>` : ''}
+            ${renderUserActions(item)}
         </div>`;
+    bindUserActions(item);
+}
+
+function renderUserActions(item) {
+    const status = getUserStatus(item);
+    return `<div class="modal-actions">
+        <button class="action-btn ${status === 'watchlist' ? 'active' : ''}" data-action="watchlist">
+            ${status === 'watchlist' ? '♥' : '♡'} Para ver
+        </button>
+        <button class="action-btn ${status === 'watched' ? 'active' : ''}" data-action="watched">
+            ${status === 'watched' ? '✓' : '○'} Já vi
+        </button>
+    </div>`;
+}
+
+function bindUserActions(item) {
+    document.querySelectorAll('.action-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleStatus(item, btn.dataset.action);
+            const container = btn.closest('.modal-actions');
+            container.outerHTML = renderUserActions(item);
+            bindUserActions(item);
+            applyFiltersAndSort();
+        });
+    });
 }
 
 function closeModal() {
@@ -227,16 +287,27 @@ function renderStats(items, type) {
 // ---- Filter & Render ----
 
 function getFilteredItems() {
-    let items = currentTab === 'tv' ? [...tvPrograms] : [...streamingTitles];
-
-    if (currentTab === 'tv') {
-        items = items.filter(isUpcoming);
+    let items;
+    if (currentTab === 'mylist') {
+        const data = loadUserData();
+        const allItems = [...tvPrograms, ...streamingTitles];
+        const statusFilter = typeFilter === 'watched' ? 'watched' : typeFilter === 'watchlist' ? 'watchlist' : null;
+        items = allItems.filter(i => {
+            const s = data[itemKey(i)];
+            return statusFilter ? s === statusFilter : (s === 'watchlist' || s === 'watched');
+        });
+    } else if (currentTab === 'tv') {
+        items = [...tvPrograms].filter(isUpcoming);
         if (timeFilter === 'now') items = items.filter(isNowPlaying);
         else if (timeFilter === 'tonight') items = items.filter(isTonight);
+    } else {
+        items = [...streamingTitles];
     }
 
-    if (typeFilter === 'movies') items = items.filter(i => i.category === 'movie');
-    else if (typeFilter === 'series') items = items.filter(i => i.category === 'series');
+    if (currentTab !== 'mylist') {
+        if (typeFilter === 'movies') items = items.filter(i => i.category === 'movie');
+        else if (typeFilter === 'series') items = items.filter(i => i.category === 'series');
+    }
 
     if (platformFilter !== 'all-platform') {
         items = items.filter(i => (i.platforms || []).includes(platformFilter));
@@ -263,9 +334,94 @@ function getFilteredItems() {
 
 function applyFiltersAndSort() {
     const items = getFilteredItems();
+    document.querySelector('#empty p').textContent = 'Nenhum resultado encontrado.';
     renderStats(items, currentTab);
-    if (currentTab === 'tv') renderTV(items);
+    if (currentTab === 'mylist') renderMyList(items);
+    else if (currentTab === 'tv') renderTV(items);
     else renderStreaming(items);
+}
+
+function renderMyList(items) {
+    const grid = document.getElementById('grid');
+    const empty = document.getElementById('empty');
+    if (!items.length) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+        empty.querySelector('p').textContent = 'A tua lista está vazia. Abre um filme ou série e toca em "Para ver" ou "Já vi".';
+        return;
+    }
+    empty.classList.add('hidden');
+
+    const tvItems = items.filter(i => i.source === 'tv');
+    const streamItems = items.filter(i => i.source === 'streaming');
+    grid.classList.remove('poster-grid');
+
+    let html = '';
+    if (streamItems.length) {
+        grid.classList.add('poster-grid');
+    }
+
+    html = items.map((item, i) => {
+        const us = getUserStatus(item);
+        const usBadge = us === 'watchlist' ? '<div class="card-user-badge watchlist">♡</div>'
+            : us === 'watched' ? '<div class="card-user-badge watched">✓</div>' : '';
+
+        if (item.source === 'streaming') {
+            const cat = item.category === 'movie' ? 'Filme' : 'Série';
+            const imdb = item.imdb ? `★ ${item.imdb.toFixed(1)}` : '';
+            const rc = item.imdb ? ratingClass(item.imdb) : '';
+            const plats = (item.platforms || []).join(' · ');
+            return `
+                <div class="card" data-idx="${i}" data-src="streaming">
+                    <div class="card-image-wrap poster-ratio">
+                        <img class="card-poster" src="${item.image}" alt="${escapeHtml(item.title)}" loading="lazy"
+                             onerror="this.parentElement.innerHTML='<div class=card-no-poster>🎬</div>'">
+                        ${imdb ? `<div class="card-rating ${rc}">${imdb}</div>` : ''}
+                        <div class="card-type ${item.category}">${cat}</div>
+                        ${usBadge}
+                        <div class="card-overlay">
+                            <div class="card-title">${escapeHtml(item.title)}</div>
+                            <div class="card-meta">
+                                ${item.year ? `<span class="card-year">${item.year}</span>` : ''}
+                                ${plats ? `<span class="card-platforms">${escapeHtml(plats)}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        } else {
+            const time = timeFromISO(item.start);
+            const endTime = timeFromISO(item.end);
+            const cat = item.category === 'movie' ? 'Filme' : 'Série';
+            const imdb = item.imdb ? `★ ${item.imdb.toFixed(1)}` : '';
+            const rc = item.imdb ? ratingClass(item.imdb) : '';
+            return `
+                <div class="card" data-idx="${i}" data-src="tv">
+                    <div class="card-image-wrap">
+                        <img class="card-poster" src="${item.image}" alt="${escapeHtml(item.title)}" loading="lazy"
+                             onerror="this.parentElement.innerHTML='<div class=card-no-poster>🎬</div>'">
+                        ${imdb ? `<div class="card-rating ${rc}">${imdb}</div>` : ''}
+                        <div class="card-type ${item.category}">${cat}</div>
+                        ${usBadge}
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">${escapeHtml(item.title)}</div>
+                        <div class="card-meta">
+                            <span class="card-channel">${escapeHtml(item.channel)}</span>
+                            <span class="card-timerange">${time} — ${endTime}</span>
+                        </div>
+                    </div>
+                </div>`;
+        }
+    }).join('');
+
+    grid.innerHTML = html;
+    grid.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('click', () => {
+            const item = items[+card.dataset.idx];
+            if (card.dataset.src === 'streaming') openStreamModal(item);
+            else openTVModal(item);
+        });
+    });
 }
 
 // ---- Tab switching ----
@@ -273,19 +429,33 @@ function applyFiltersAndSort() {
 function setTab(tab) {
     currentTab = tab;
     timeFilter = 'all-time';
-    typeFilter = 'all-type';
+    typeFilter = tab === 'mylist' ? 'all-list' : 'all-type';
     sortMode = tab === 'tv' ? 'sort-time' : 'sort-rating';
     platformFilter = 'all-platform';
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
 
     const tvFilters = document.getElementById('tv-filters');
     const streamFilters = document.getElementById('stream-filters');
+    const mylistFilters = document.getElementById('mylist-filters');
     tvFilters.classList.toggle('hidden', tab !== 'tv');
     streamFilters.classList.toggle('hidden', tab !== 'streaming');
+    mylistFilters.classList.toggle('hidden', tab !== 'mylist');
 
     document.querySelectorAll('.filter-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.filter === 'all-time' || b.dataset.filter === 'all-type');
+        b.classList.remove('active');
     });
+    if (tab === 'mylist') {
+        document.querySelector('#mylist-filters [data-filter="all-list"]').classList.add('active');
+        document.querySelector('#mylist-filters [data-filter="sort-rating"]').classList.add('active');
+    } else if (tab === 'tv') {
+        document.querySelector('#tv-filters [data-filter="all-time"]').classList.add('active');
+        document.querySelector('#tv-filters [data-filter="all-type"]').classList.add('active');
+        document.querySelector('#tv-filters [data-filter="sort-time"]').classList.add('active');
+    } else {
+        document.querySelector('#stream-filters [data-filter="all-type"]').classList.add('active');
+        document.querySelector('#stream-filters [data-filter="all-platform"]').classList.add('active');
+        document.querySelector('#stream-filters [data-filter="sort-rating"]').classList.add('active');
+    }
 
     document.getElementById('grid').classList.toggle('poster-grid', tab === 'streaming');
 

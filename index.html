@@ -38,6 +38,7 @@
             <div class="tabs">
                 <button class="tab-btn active" data-tab="tv">📺 TV</button>
                 <button class="tab-btn" data-tab="streaming">🎬 Streaming</button>
+                <button class="tab-btn" data-tab="mylist">♥ Lista</button>
             </div>
             <div class="search-bar">
                 <input type="text" id="search" placeholder="Pesquisar filme, série, canal, plataforma..." />
@@ -72,6 +73,17 @@
                     <button class="filter-btn" data-filter="Prime Video">Prime Video</button>
                     <button class="filter-btn" data-filter="Apple TV+">Apple TV+</button>
                     <button class="filter-btn" data-filter="SkyShowtime">SkyShowtime</button>
+                </div>
+                <div class="filter-row" data-group="sort">
+                    <button class="filter-btn active" data-filter="sort-rating">★ Rating</button>
+                    <button class="filter-btn" data-filter="sort-alpha">A-Z</button>
+                </div>
+            </div>
+            <div id="mylist-filters" class="filter-group hidden">
+                <div class="filter-row" data-group="type">
+                    <button class="filter-btn active" data-filter="all-list">Tudo</button>
+                    <button class="filter-btn" data-filter="watchlist">Para ver</button>
+                    <button class="filter-btn" data-filter="watched">Já vi</button>
                 </div>
                 <div class="filter-row" data-group="sort">
                     <button class="filter-btn active" data-filter="sort-rating">★ Rating</button>
