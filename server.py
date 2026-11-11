@@ -13,6 +13,7 @@ import gzip
 PORT = int(os.environ.get('PORT', 8090))
 DIR = os.path.dirname(os.path.abspath(__file__))
 OMDB_KEY = os.environ.get('OMDB_KEY', '9d8ae30a')
+TMDB_KEY = os.environ.get('TMDB_KEY', 'fdf03f4af4bdc5c7dc68f3600ed76c1e')
 
 MEO_HEADERS = {
     'Accept': '*/*',
@@ -144,6 +145,27 @@ def _omdb_search(title):
         pass
     return None
 
+def _tmdb_find_imdb_id(title):
+    try:
+        q = urllib.parse.quote(title)
+        url = f'https://api.themoviedb.org/3/search/multi?api_key={TMDB_KEY}&query={q}&language=pt-PT'
+        raw = urllib.request.urlopen(urllib.request.Request(url), timeout=5).read()
+        data = json.loads(raw)
+        results = data.get('results', [])
+        if not results:
+            return None
+        hit = results[0]
+        media_type = hit.get('media_type', 'movie')
+        tmdb_id = hit.get('id')
+        if not tmdb_id:
+            return None
+        detail_url = f'https://api.themoviedb.org/3/{media_type}/{tmdb_id}/external_ids?api_key={TMDB_KEY}'
+        raw2 = urllib.request.urlopen(urllib.request.Request(detail_url), timeout=5).read()
+        ext = json.loads(raw2)
+        return ext.get('imdb_id')
+    except Exception:
+        return None
+
 def omdb_lookup(title):
     if title in _omdb_cache:
         return _omdb_cache[title]
@@ -155,6 +177,10 @@ def omdb_lookup(title):
         parts = re.split(r'\s*[-–:]\s*', title, maxsplit=1)
         if len(parts) > 1:
             result = _omdb_get(f't={urllib.parse.quote(parts[0].strip())}')
+    if not result:
+        imdb_id = _tmdb_find_imdb_id(title)
+        if imdb_id:
+            result = _omdb_get(f'i={imdb_id}')
     _omdb_cache[title] = result or {}
     _save_omdb_cache(_omdb_cache)
     return _omdb_cache[title]
