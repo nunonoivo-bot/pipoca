@@ -115,29 +115,49 @@ def _save_omdb_cache(cache):
 
 _omdb_cache = _load_omdb_cache()
 
-def omdb_lookup(title):
-    if title in _omdb_cache:
-        return _omdb_cache[title]
+def _omdb_get(query_param):
     try:
-        q = urllib.parse.quote(title)
-        url = f'http://www.omdbapi.com/?t={q}&apikey={OMDB_KEY}'
-        req = urllib.request.Request(url)
-        raw = urllib.request.urlopen(req, timeout=5).read()
+        url = f'http://www.omdbapi.com/?{query_param}&apikey={OMDB_KEY}'
+        raw = urllib.request.urlopen(urllib.request.Request(url), timeout=5).read()
         data = json.loads(raw)
-        if data.get('Response') == 'True':
-            result = {
+        if data.get('Response') == 'True' and data.get('imdbRating'):
+            return {
                 'imdb': float(data['imdbRating']) if data.get('imdbRating', 'N/A') != 'N/A' else None,
                 'year': data.get('Year', ''),
                 'genre': data.get('Genre', ''),
                 'poster': data.get('Poster', ''),
             }
-        else:
-            result = {}
     except Exception:
-        result = {}
-    _omdb_cache[title] = result
+        pass
+    return None
+
+def _omdb_search(title):
+    try:
+        url = f'http://www.omdbapi.com/?s={urllib.parse.quote(title)}&apikey={OMDB_KEY}'
+        raw = urllib.request.urlopen(urllib.request.Request(url), timeout=5).read()
+        data = json.loads(raw)
+        if data.get('Response') == 'True' and data.get('Search'):
+            imdb_id = data['Search'][0].get('imdbID')
+            if imdb_id:
+                return _omdb_get(f'i={imdb_id}')
+    except Exception:
+        pass
+    return None
+
+def omdb_lookup(title):
+    if title in _omdb_cache:
+        return _omdb_cache[title]
+    q = urllib.parse.quote(title)
+    result = _omdb_get(f't={q}')
+    if not result:
+        result = _omdb_search(title)
+    if not result:
+        parts = re.split(r'\s*[-–:]\s*', title, maxsplit=1)
+        if len(parts) > 1:
+            result = _omdb_get(f't={urllib.parse.quote(parts[0].strip())}')
+    _omdb_cache[title] = result or {}
     _save_omdb_cache(_omdb_cache)
-    return result
+    return _omdb_cache[title]
 
 
 # ---- MEO TV functions ----
