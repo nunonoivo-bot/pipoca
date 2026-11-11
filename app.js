@@ -112,14 +112,14 @@ function renderStreaming(items) {
                          onerror="this.parentElement.innerHTML='<div class=card-no-poster>🎬</div>'">
                     ${imdb ? `<div class="card-rating ${rc}">${imdb}</div>` : ''}
                     <div class="card-type ${item.category}">${cat}</div>
-                </div>
-                <div class="card-info">
-                    <div class="card-title">${escapeHtml(item.title)}</div>
-                    <div class="card-meta">
-                        ${item.year ? `<span class="card-year">${item.year}</span>` : ''}
-                        ${plats ? `<span class="card-platforms">${escapeHtml(plats)}</span>` : ''}
+                    <div class="card-overlay">
+                        <div class="card-title">${escapeHtml(item.title)}</div>
+                        <div class="card-meta">
+                            ${item.year ? `<span class="card-year">${item.year}</span>` : ''}
+                            ${plats ? `<span class="card-platforms">${escapeHtml(plats)}</span>` : ''}
+                        </div>
+                        ${item.tomato ? `<div class="card-tomato">🍅 ${item.tomato}%</div>` : ''}
                     </div>
-                    ${item.tomato ? `<div class="card-tomato">🍅 ${item.tomato}%</div>` : ''}
                 </div>
             </div>`;
     }).join('');

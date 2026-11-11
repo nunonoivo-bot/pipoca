@@ -103,7 +103,15 @@ header {
 /* Filters */
 .filter-group { display: flex; flex-direction: column; gap: 6px; }
 .filter-group.hidden { display: none; }
-.filter-row { display: flex; gap: 5px; flex-wrap: wrap; }
+.filter-row {
+    display: flex; gap: 5px; flex-wrap: nowrap;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; -ms-overflow-style: none;
+    mask-image: linear-gradient(to right, black 90%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
+    padding-bottom: 2px;
+}
+.filter-row::-webkit-scrollbar { display: none; }
 
 .filter-btn {
     padding: 5px 14px; border: 1px solid var(--border); border-radius: 20px;
@@ -262,6 +270,23 @@ header {
 .card-year { font-weight: 500; }
 .card-platforms { font-weight: 600; color: var(--accent); font-size: 10px; }
 .card-tomato { margin-top: 4px; font-size: 10px; color: var(--rating-red); font-weight: 600; }
+
+/* Streaming overlay cards */
+.card-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 40px 10px 10px;
+    background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 50%, transparent 100%);
+    display: flex; flex-direction: column; justify-content: flex-end;
+}
+.card-overlay .card-title {
+    font-size: 13px; font-weight: 700; line-height: 1.3; margin-bottom: 4px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+.card-overlay .card-meta {
+    font-size: 10px; gap: 4px; justify-content: flex-start; flex-wrap: wrap;
+}
+.card-overlay .card-platforms { font-size: 9px; }
+.card-overlay .card-tomato { margin-top: 2px; font-size: 9px; }
 
 /* Empty */
 .empty { text-align: center; padding: 100px 0; color: var(--text-muted); font-size: 14px; }
