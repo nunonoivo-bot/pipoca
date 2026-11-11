@@ -252,49 +252,77 @@ def build_tv_schedule(target_date):
 
 # ---- JustWatch streaming functions ----
 
-def parse_apollo(html):
-    match = re.search(r'window\.__APOLLO_STATE__\s*=\s*', html)
-    if not match:
+def parse_nuxt(html):
+    m = re.search(r'id="__NUXT_DATA__"[^>]*>\s*(\[.*?\])\s*</script>', html, re.DOTALL)
+    if not m:
         return {}
-    start = match.end()
-    depth = 0
-    for i in range(start, min(start + 600000, len(html))):
-        if html[i] == '{':
-            depth += 1
-        elif html[i] == '}':
-            depth -= 1
-            if depth == 0:
-                break
-    return json.loads(html[start:i + 1]).get('defaultClient', {})
+    arr = json.loads(m.group(1))
+    if len(arr) < 5 or not isinstance(arr[4], dict):
+        return {}
+
+    def resolve(val, depth=0):
+        if depth > 4:
+            return val
+        if isinstance(val, int) and 0 <= val < len(arr):
+            return resolve(arr[val], depth + 1)
+        return val
+
+    def deep_resolve(val, depth=0):
+        if depth > 3:
+            return val
+        val = resolve(val)
+        if isinstance(val, dict):
+            return {k: deep_resolve(v, depth + 1) for k, v in val.items()}
+        if isinstance(val, list):
+            return [deep_resolve(v, depth + 1) for v in val]
+        return val
+
+    apollo = arr[4]
+    return {k: deep_resolve(v) for k, v in apollo.items()
+            if isinstance(k, str) and (k.startswith('Show:') or k.startswith('Movie:'))}
 
 
 def extract_jw_titles(dc, platform=''):
     items = []
     for k, v in dc.items():
-        if not (k.startswith('Show:') or k.startswith('Movie:')): continue
-        if not isinstance(v, dict): continue
-
+        if not isinstance(v, dict):
+            continue
         obj_type = v.get('objectType', '')
-        content_ref = v.get('content({"country":"PT","language":"pt"})', {})
-        content_id = content_ref.get('id', '') if isinstance(content_ref, dict) else ''
-        content = dc.get(content_id, {})
-        scoring = dc.get(f'{content_id}.scoring', {})
+        content = v.get('content({"country":"PT","language":"pt"})', {})
+        if not isinstance(content, dict):
+            continue
+        scoring = content.get('scoring', {})
+        if not isinstance(scoring, dict):
+            scoring = {}
 
-        poster_url = content.get('posterUrl({})') or content.get('posterUrl', '')
-        if poster_url:
+        poster_url = content.get('posterUrl', '')
+        if poster_url and isinstance(poster_url, str):
             poster_url = (
                 f'https://images.justwatch.com{poster_url}'
                 .replace('{profile}', 's332')
                 .replace('{format}', 'webp')
             )
 
+        title = content.get('title', '')
+        if not title or not isinstance(title, str):
+            continue
+
+        try:
+            imdb = float(scoring['imdbScore']) if scoring.get('imdbScore') is not None else None
+        except (ValueError, TypeError):
+            imdb = None
+        try:
+            tomato = int(scoring['tomatoMeter']) if scoring.get('tomatoMeter') is not None else None
+        except (ValueError, TypeError):
+            tomato = None
+
         items.append({
-            'title': content.get('title', '?'),
+            'title': title,
             'type': 'movie' if obj_type == 'MOVIE' else 'series',
             'year': content.get('originalReleaseYear', ''),
-            'imdb': scoring.get('imdbScore'),
+            'imdb': imdb,
             'tmdb': scoring.get('tmdbScore'),
-            'tomato': scoring.get('tomatoMeter'),
+            'tomato': tomato,
             'platforms': [platform] if platform else [],
             'poster': poster_url,
             'description': content.get('shortDescription', ''),
@@ -306,7 +334,7 @@ def fetch_jw_page(path):
     url = f'https://www.justwatch.com/pt{path}'
     req = urllib.request.Request(url, headers=JW_HEADERS)
     html = urllib.request.urlopen(req, timeout=15).read().decode('utf-8', errors='ignore')
-    return parse_apollo(html)
+    return parse_nuxt(html)
 
 
 def build_streaming():
