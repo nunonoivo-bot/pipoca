@@ -327,6 +327,12 @@ header {
     background: rgba(52,211,153,0.12); border-color: var(--rating-green);
     color: var(--rating-green);
 }
+.action-btn.imdb-link {
+    background: #f5c518; border-color: #f5c518; color: #000;
+    text-decoration: none; text-align: center;
+}
+.action-btn.imdb-link:hover { opacity: 0.85; }
+.action-btn.share-btn { background: var(--bg-card); }
 
 /* Empty */
 .empty { text-align: center; padding: 100px 0; color: var(--text-muted); font-size: 14px; }

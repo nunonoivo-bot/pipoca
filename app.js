@@ -230,6 +230,9 @@ function openStreamModal(item) {
 
 function renderUserActions(item) {
     const status = getUserStatus(item);
+    const imdbLink = item.imdb_id
+        ? `<a class="action-btn imdb-link" href="https://www.imdb.com/title/${item.imdb_id}/" target="_blank" rel="noopener">IMDb</a>`
+        : '';
     return `<div class="modal-actions">
         <button class="action-btn ${status === 'watchlist' ? 'active' : ''}" data-action="watchlist">
             ${status === 'watchlist' ? '♥' : '♡'} Para ver
@@ -237,11 +240,13 @@ function renderUserActions(item) {
         <button class="action-btn ${status === 'watched' ? 'active' : ''}" data-action="watched">
             ${status === 'watched' ? '✓' : '○'} Já vi
         </button>
+        ${imdbLink}
+        <button class="action-btn share-btn" data-action="share">Partilhar</button>
     </div>`;
 }
 
 function bindUserActions(item) {
-    document.querySelectorAll('.action-btn').forEach(btn => {
+    document.querySelectorAll('.action-btn[data-action="watchlist"], .action-btn[data-action="watched"]').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleStatus(item, btn.dataset.action);
@@ -251,6 +256,30 @@ function bindUserActions(item) {
             applyFiltersAndSort();
         });
     });
+    const shareBtn = document.querySelector('.share-btn');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            shareItem(item);
+        });
+    }
+}
+
+function shareItem(item) {
+    const cat = item.category === 'movie' ? 'filme' : 'série';
+    const rating = item.imdb ? ` (IMDb ${item.imdb.toFixed(1)})` : '';
+    const where = item.source === 'tv'
+        ? `na ${item.channel}`
+        : `em ${(item.platforms || []).join(', ')}`;
+    const text = `${item.title}${rating} — ${cat} ${where}. Vê mais em https://bit.ly/pipoca-app`;
+    if (navigator.share) {
+        navigator.share({ title: item.title, text }).catch(() => {});
+    } else {
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.querySelector('.share-btn');
+            if (btn) { btn.textContent = 'Copiado!'; setTimeout(() => btn.textContent = 'Partilhar', 2000); }
+        }).catch(() => {});
+    }
 }
 
 function closeModal() {

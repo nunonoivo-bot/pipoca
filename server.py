@@ -124,6 +124,7 @@ def _omdb_get(query_param):
         if data.get('Response') == 'True' and data.get('imdbRating'):
             return {
                 'imdb': float(data['imdbRating']) if data.get('imdbRating', 'N/A') != 'N/A' else None,
+                'imdb_id': data.get('imdbID', ''),
                 'year': data.get('Year', ''),
                 'genre': data.get('Genre', ''),
                 'poster': data.get('Poster', ''),
@@ -282,12 +283,16 @@ def build_tv_schedule(target_date):
             info = omdb_lookup(t)
             if info.get('imdb'):
                 prog['imdb'] = info['imdb']
+            if info.get('imdb_id'):
+                prog['imdb_id'] = info['imdb_id']
             if info.get('poster') and info['poster'] != 'N/A':
                 prog['omdb_poster'] = info['poster']
         else:
             cached = _omdb_cache.get(t, {})
             if cached.get('imdb'):
                 prog['imdb'] = cached['imdb']
+            if cached.get('imdb_id'):
+                prog['imdb_id'] = cached['imdb_id']
             if cached.get('poster') and cached['poster'] != 'N/A':
                 prog['omdb_poster'] = cached['poster']
 
@@ -439,6 +444,7 @@ def build_streaming():
             'category': item['type'],
             'year': item.get('year', ''),
             'imdb': item.get('imdb'),
+            'imdb_id': item.get('imdb_id', ''),
             'tmdb': item.get('tmdb'),
             'tomato': item.get('tomato'),
             'platforms': item.get('platforms', []),
