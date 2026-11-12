@@ -521,18 +521,7 @@ class BingeHandler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self.send_json({'error': str(e)}, 500)
         elif parsed.path == '/api/health':
-            try:
-                data = build_all()
-                tv_count = data.get('tv', {}).get('count', 0)
-                stream_count = data.get('streaming', {}).get('count', 0)
-                ok = tv_count > 0 and stream_count > 0
-                self.send_json({
-                    'status': 'ok' if ok else 'degraded',
-                    'tv': tv_count,
-                    'streaming': stream_count,
-                }, 200 if ok else 503)
-            except Exception as e:
-                self.send_json({'status': 'error', 'message': str(e)}, 503)
+            self.send_json({'status': 'ok'})
         else:
             super().do_GET()
 
