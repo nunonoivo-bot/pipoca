@@ -1,4 +1,4 @@
-const CACHE_NAME = 'binge-v2';
+const CACHE_NAME = 'binge-v3';
 const STATIC_ASSETS = ['/', '/index.html', '/style.css', '/app.js', '/manifest.json'];
 
 self.addEventListener('install', (e) => {
@@ -20,26 +20,19 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
     const url = new URL(e.request.url);
 
+    // API: network only, no cache — server has its own 30-min cache
     if (url.pathname.startsWith('/api/')) {
-        e.respondWith(
-            fetch(e.request)
-                .then(res => {
-                    if (res.ok) {
-                        const clone = res.clone();
-                        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-                    }
-                    return res;
-                })
-                .catch(() => caches.match(e.request))
-        );
         return;
     }
 
+    // Static assets: network first, cache fallback (offline)
     e.respondWith(
         fetch(e.request)
             .then(res => {
-                const clone = res.clone();
-                caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+                if (res.ok) {
+                    const clone = res.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+                }
                 return res;
             })
             .catch(() => caches.match(e.request))
