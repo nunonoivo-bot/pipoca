@@ -10,10 +10,10 @@ let platformFilter = 'all-platform';
 let currentSearch = '';
 
 function loadUserData() {
-    try { return JSON.parse(localStorage.getItem('pipoca_userdata') || '{}'); } catch { return {}; }
+    try { return JSON.parse(localStorage.getItem('binge_userdata') || localStorage.getItem('pipoca_userdata') || '{}'); } catch { return {}; }
 }
 function saveUserData(data) {
-    try { localStorage.setItem('pipoca_userdata', JSON.stringify(data)); } catch {}
+    try { localStorage.setItem('binge_userdata', JSON.stringify(data)); } catch {}
 }
 function itemKey(item) { return `${item.source || item.category}:${item.title}`; }
 function getUserStatus(item) {
@@ -320,7 +320,7 @@ function shareItem(item) {
     const where = item.source === 'tv'
         ? `na ${item.channel}`
         : `em ${(item.platforms || []).join(', ')}`;
-    const text = `${item.title}${rating} — ${cat} ${where}. Vê mais em https://bit.ly/pipoca-app`;
+    const text = `${item.title}${rating} — ${cat} ${where}. Vê mais em https://bit.ly/pipoca-app`;  // TODO: update Bitly link
     if (navigator.share) {
         navigator.share({ title: item.title, text }).catch(() => {});
     } else {

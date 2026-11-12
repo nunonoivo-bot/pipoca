@@ -1,6 +1,6 @@
 {
-  "name": "Pipoca",
-  "short_name": "Pipoca",
+  "name": "Binge",
+  "short_name": "Binge",
   "description": "Filmes e séries hoje em Portugal — TV e Streaming com ratings IMDB",
   "start_url": "/",
   "display": "standalone",

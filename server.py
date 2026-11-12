@@ -506,7 +506,7 @@ def build_all(target_date=None):
 
 # ---- HTTP Server ----
 
-class PipocaHandler(http.server.SimpleHTTPRequestHandler):
+class BingeHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIR, **kwargs)
 
@@ -572,8 +572,8 @@ class PipocaHandler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     os.chdir(DIR)
-    server = http.server.HTTPServer(('', PORT), PipocaHandler)
-    print(f'🍿 Pipoca a servir em http://localhost:{PORT}')
+    server = http.server.HTTPServer(('', PORT), BingeHandler)
+    print(f'🍿 Binge a servir em http://localhost:{PORT}')
     try:
         server.serve_forever()
     except KeyboardInterrupt:
