@@ -285,6 +285,8 @@ def build_tv_schedule(target_date):
                 prog['imdb'] = info['imdb']
             if info.get('imdb_id'):
                 prog['imdb_id'] = info['imdb_id']
+            if info.get('genre'):
+                prog['genre'] = info['genre']
             if info.get('poster') and info['poster'] != 'N/A':
                 prog['omdb_poster'] = info['poster']
         else:
@@ -293,6 +295,8 @@ def build_tv_schedule(target_date):
                 prog['imdb'] = cached['imdb']
             if cached.get('imdb_id'):
                 prog['imdb_id'] = cached['imdb_id']
+            if cached.get('genre'):
+                prog['genre'] = cached['genre']
             if cached.get('poster') and cached['poster'] != 'N/A':
                 prog['omdb_poster'] = cached['poster']
 

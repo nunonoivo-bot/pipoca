@@ -16,18 +16,61 @@ function saveUserData(data) {
     try { localStorage.setItem('pipoca_userdata', JSON.stringify(data)); } catch {}
 }
 function itemKey(item) { return `${item.source || item.category}:${item.title}`; }
-function getUserStatus(item) { return loadUserData()[itemKey(item)] || null; }
+function getUserStatus(item) {
+    const entry = loadUserData()[itemKey(item)];
+    if (!entry) return null;
+    return typeof entry === 'string' ? entry : entry.status || null;
+}
 function setUserStatus(item, status) {
     const data = loadUserData();
     const key = itemKey(item);
-    if (status && data[key] !== status) data[key] = status;
-    else if (!status || data[key] === status) delete data[key];
-    else data[key] = status;
+    if (status && getUserStatus(item) !== status) {
+        data[key] = { status, genre: item.genre || '', imdb: item.imdb || null, category: item.category || '' };
+    } else {
+        delete data[key];
+    }
     saveUserData(data);
 }
 function toggleStatus(item, status) {
     const current = getUserStatus(item);
     setUserStatus(item, current === status ? null : status);
+}
+
+function buildTasteProfile() {
+    const data = loadUserData();
+    const genres = {};
+    let totalRating = 0, ratingCount = 0, movies = 0, series = 0;
+    for (const entry of Object.values(data)) {
+        if (!entry || typeof entry === 'string') continue;
+        if (entry.genre) {
+            entry.genre.split(', ').forEach(g => { genres[g] = (genres[g] || 0) + 1; });
+        }
+        if (entry.imdb) { totalRating += entry.imdb; ratingCount++; }
+        if (entry.category === 'movie') movies++;
+        if (entry.category === 'series') series++;
+    }
+    const topGenres = Object.entries(genres).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
+    return {
+        genres: topGenres,
+        avgRating: ratingCount > 0 ? totalRating / ratingCount : 0,
+        prefersMovies: movies > series,
+        hasData: ratingCount >= 3
+    };
+}
+
+function getRecommendationScore(item, profile) {
+    if (!profile.hasData) return 0;
+    let score = 0;
+    if (item.genre) {
+        const itemGenres = item.genre.split(', ');
+        const matches = itemGenres.filter(g => profile.genres.includes(g)).length;
+        score += matches * 3;
+    }
+    if (item.imdb && item.imdb >= profile.avgRating) score += 2;
+    if (item.imdb && item.imdb >= 7.0) score += 1;
+    if (profile.prefersMovies && item.category === 'movie') score += 1;
+    if (!profile.prefersMovies && item.category === 'series') score += 1;
+    return score;
 }
 
 function formatDate(dateStr) {
@@ -89,6 +132,8 @@ function renderTV(items) {
         const us = getUserStatus(item);
         const usBadge = us === 'watchlist' ? '<div class="card-user-badge watchlist">♡</div>'
             : us === 'watched' ? '<div class="card-user-badge watched">✓</div>' : '';
+        const recScore = item._recScore || 0;
+        const recBadge = recScore >= 4 && !us ? '<div class="card-rec-badge">Para ti</div>' : '';
 
         return `
             <div class="card ${now ? 'now-playing' : ''}" data-idx="${i}" data-src="tv">
@@ -100,6 +145,7 @@ function renderTV(items) {
                     <div class="card-type ${item.category}">${cat}</div>
                     <div class="card-time-badge">${time}</div>
                     ${usBadge}
+                    ${recBadge}
                 </div>
                 <div class="card-info">
                     <div class="card-title">${escapeHtml(item.title)}</div>
@@ -134,6 +180,8 @@ function renderStreaming(items) {
         const us = getUserStatus(item);
         const usBadge = us === 'watchlist' ? '<div class="card-user-badge watchlist">♡</div>'
             : us === 'watched' ? '<div class="card-user-badge watched">✓</div>' : '';
+        const recScore = item._recScore || 0;
+        const recBadge = recScore >= 4 && !us ? '<div class="card-rec-badge">Para ti</div>' : '';
 
         return `
             <div class="card" data-idx="${i}" data-src="streaming">
@@ -143,6 +191,7 @@ function renderStreaming(items) {
                     ${imdb ? `<div class="card-rating ${rc}">${imdb}</div>` : ''}
                     <div class="card-type ${item.category}">${cat}</div>
                     ${usBadge}
+                    ${recBadge}
                     <div class="card-overlay">
                         <div class="card-title">${escapeHtml(item.title)}</div>
                         <div class="card-meta">
@@ -322,7 +371,8 @@ function getFilteredItems() {
         const allItems = [...tvPrograms, ...streamingTitles];
         const statusFilter = typeFilter === 'watched' ? 'watched' : typeFilter === 'watchlist' ? 'watchlist' : null;
         items = allItems.filter(i => {
-            const s = data[itemKey(i)];
+            const entry = data[itemKey(i)];
+            const s = typeof entry === 'string' ? entry : (entry && entry.status) || null;
             return statusFilter ? s === statusFilter : (s === 'watchlist' || s === 'watched');
         });
     } else if (currentTab === 'tv') {
@@ -352,7 +402,14 @@ function getFilteredItems() {
         );
     }
 
-    if (sortMode === 'sort-rating') {
+    const profile = buildTasteProfile();
+    if (profile.hasData) {
+        items.forEach(i => { i._recScore = getRecommendationScore(i, profile); });
+    }
+
+    if (sortMode === 'sort-rec') {
+        items.sort((a, b) => (b._recScore || 0) - (a._recScore || 0) || (b.imdb || 0) - (a.imdb || 0));
+    } else if (sortMode === 'sort-rating') {
         items.sort((a, b) => (b.imdb || 0) - (a.imdb || 0));
     } else if (sortMode === 'sort-alpha') {
         items.sort((a, b) => a.title.localeCompare(b.title, 'pt'));
