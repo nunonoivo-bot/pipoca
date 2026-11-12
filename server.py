@@ -464,8 +464,34 @@ def build_streaming():
 # ---- Combined API (with 30-min cache) ----
 
 CACHE_TTL = 1800
-_api_cache = {}
 _cache_lock = threading.Lock()
+_tv_cache = {}       # {date: {'data': [...], 'ts': float}}
+_stream_cache = {}   # {'data': [...], 'ts': float} or None
+_bg_loading = False
+
+
+def _bg_fetch():
+    global _bg_loading
+    _bg_loading = True
+    today = date.today().isoformat()
+    try:
+        print(f'  [BG] Fetching TV schedule for {today}...')
+        tv = build_tv_schedule(today)
+        print(f'  [BG] TV: {len(tv)} programs')
+        with _cache_lock:
+            _tv_cache[today] = {'data': tv, 'ts': time.time()}
+    except Exception as e:
+        print(f'  [BG] TV error: {e}')
+    try:
+        print(f'  [BG] Fetching streaming catalog...')
+        streaming = build_streaming()
+        print(f'  [BG] Streaming: {len(streaming)} titles')
+        with _cache_lock:
+            _stream_cache['current'] = {'data': streaming, 'ts': time.time()}
+    except Exception as e:
+        print(f'  [BG] Streaming error: {e}')
+    _bg_loading = False
+    print('  [BG] Done.')
 
 
 def build_all(target_date=None):
@@ -473,35 +499,36 @@ def build_all(target_date=None):
         target_date = date.today().isoformat()
 
     with _cache_lock:
-        cached = _api_cache.get(target_date)
-        if cached and time.time() - cached['ts'] < CACHE_TTL:
-            print(f'  Cache hit for {target_date}')
-            return cached['data']
+        tv_cached = _tv_cache.get(target_date)
+        st_cached = _stream_cache.get('current')
 
-    print(f'  Fetching TV schedule for {target_date}...')
-    tv_programs = build_tv_schedule(target_date)
-    print(f'  TV: {len(tv_programs)} programs')
+    tv_ok = tv_cached and time.time() - tv_cached['ts'] < CACHE_TTL
+    st_ok = st_cached and time.time() - st_cached['ts'] < CACHE_TTL
 
-    print(f'  Fetching streaming catalog...')
-    streaming = build_streaming()
-    print(f'  Streaming: {len(streaming)} titles')
+    if not tv_ok:
+        if not _bg_loading:
+            threading.Thread(target=_bg_fetch, daemon=True).start()
+        if tv_cached:
+            tv_programs = tv_cached['data']
+        else:
+            return {'date': target_date, 'loading': True,
+                    'tv': {'count': 0, 'programs': []},
+                    'streaming': {'count': 0, 'titles': []}}
+    else:
+        tv_programs = tv_cached['data']
 
-    data = {
+    if not st_ok:
+        if not _bg_loading:
+            threading.Thread(target=_bg_fetch, daemon=True).start()
+        streaming = st_cached['data'] if st_cached else []
+    else:
+        streaming = st_cached['data']
+
+    return {
         'date': target_date,
-        'tv': {
-            'count': len(tv_programs),
-            'programs': tv_programs,
-        },
-        'streaming': {
-            'count': len(streaming),
-            'titles': streaming,
-        },
+        'tv': {'count': len(tv_programs), 'programs': tv_programs},
+        'streaming': {'count': len(streaming), 'titles': streaming},
     }
-
-    with _cache_lock:
-        _api_cache[target_date] = {'data': data, 'ts': time.time()}
-
-    return data
 
 
 # ---- HTTP Server ----
@@ -561,6 +588,7 @@ class BingeHandler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     os.chdir(DIR)
+    threading.Thread(target=_bg_fetch, daemon=True).start()
     server = http.server.HTTPServer(('', PORT), BingeHandler)
     print(f'🍿 Binge a servir em http://localhost:{PORT}')
     try:

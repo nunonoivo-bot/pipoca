@@ -561,6 +561,12 @@ async function loadAll() {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
+        if (data.loading) {
+            loading.querySelector('p').textContent = 'O servidor está a preparar os dados...';
+            setTimeout(loadAll, 4000);
+            return;
+        }
+
         tvPrograms = data.tv?.programs || [];
         streamingTitles = data.streaming?.titles || [];
 
@@ -570,9 +576,9 @@ async function loadAll() {
         loading.innerHTML = `
             <p style="color:var(--rating-red);">Não foi possível carregar.</p>
             <p style="color:var(--text-muted);font-size:13px;margin-top:8px;">
-                Verifica que o servidor está a correr:<br>
-                <code style="color:var(--accent);">python3 server.py</code>
+                A tentar novamente em 5 segundos...
             </p>`;
+        setTimeout(loadAll, 5000);
     }
 }
 
