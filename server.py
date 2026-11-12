@@ -582,8 +582,12 @@ class BingeHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
     def log_message(self, fmt, *args):
-        if '/api/' in (args[0] if args else ''):
-            super().log_message(fmt, *args)
+        try:
+            first = str(args[0]) if args else ''
+            if '/api/' in first:
+                super().log_message(fmt, *args)
+        except Exception:
+            pass
 
 
 if __name__ == '__main__':
