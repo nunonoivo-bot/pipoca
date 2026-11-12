@@ -320,7 +320,7 @@ function shareItem(item) {
     const where = item.source === 'tv'
         ? `na ${item.channel}`
         : `em ${(item.platforms || []).join(', ')}`;
-    const text = `${item.title}${rating} — ${cat} ${where}. Vê mais em https://bit.ly/pipoca-app`;  // TODO: update Bitly link
+    const text = `${item.title}${rating} — ${cat} ${where}. Vê mais em https://bit.ly/binge-pt`;
     if (navigator.share) {
         navigator.share({ title: item.title, text }).catch(() => {});
     } else {
